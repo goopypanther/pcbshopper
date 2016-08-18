@@ -1,0 +1,37 @@
+/**
+ * @file pcbshopper.ulp
+ * @brief Automatically parse PCB and submit for quote on PCBshopper.com
+ *
+ * @author Jeremy Ruhland <jeremy ( a t ) goopypanther.org>
+ * @license (C) Jeremy Ruhland 2016 under GPL3
+ *
+ */
+ 
+#usage "<b>PCBshopper Quote Helper</b>"
+       "<p>"
+       "Automatically submit quotes to PCBshopper.com"
+       "<p>"
+       "<author>Author: Jeremy Ruhland</author>"
+       
+#require 5.1000
+string Version = "1";
+
+/**
+ * Main function executed from here
+ */
+
+// Parse arguments & search for state indicator
+for (int i = 1; i <= argc; i++) {
+    if (argv[i] == "-state2") {
+        skipDrcExport = 1;
+    } else {}
+}
+
+// Check we are in layout editor...
+if (board) {
+
+// If we are not in layout editor...
+} else {
+    // Popup warning
+    dlgMessageBox("This script must be run from layout editor.");
+}
