@@ -26,6 +26,28 @@ enum {
 
 // Global variables
 char skipDrcExport;
+string druFilePath;
+string paramWarnings;
+
+
+// Functions
+
+/**
+ * Calculate PCB parameters required for quote
+ * TODO
+ */
+void calculateParams(void) {
+
+}
+
+
+/**
+ * Draw dialog with quote information
+ * TODO
+ */
+void drawDialog(void) {
+
+}
 
 
 /**
@@ -33,21 +55,38 @@ char skipDrcExport;
  */
 
 // Parse arguments & search for state indicator
+skipDrcExport = false;
 for (int i = 1; i <= argc; i++) {
-    if (argv[i] == "-skipDrcExport") {
+    if (argv[i] == "-skipdrcexport") {
         skipDrcExport = true;
-    } else {
-		skipDrcExport = false;
-	}
+    } else {}
 }
 
 // Check we are in layout editor...
 if (board) {
-    // Export board design rules to temp file
+    // Export board design rules to temp file unless specified by runtime flag
     if (skipDrcExport == false) {
-        
+        board(B) { // Create context
+            // Generate file path for new temp dru file
+            druFilePath = filedir(argv[0]) + "pcbshpr-" + filename(filesetext(B.name, ".dru"));
+
+            // Save drc file, re-run script with new directive
+            exit("DRC SAVE '" + druFilePath + "';\nRUN '" + argv[0] + "' -skipdrcexport;");
+        }
     } else {
+    // If dru already exported in previous run
+        status("Identifying PCB design constraints...");
+        calculateParams(); // Check PCB for all relevant design constraints
         
+        // Check if any warnings were generated during param calcs
+        if (paramWarnings) {
+            // Generate warning string for display
+            paramWarnings = "<b>Warnings generated during param calcs:</b> <ul>" + paramWarnings + "</ul>";
+        } else {}
+
+        drawDialog(); // Display info dialog with params
+
+        exit(EXIT_SUCCESS);
 	}
 // If we are not in layout editor...
 } else {
