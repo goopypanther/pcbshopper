@@ -23,11 +23,46 @@ enum {
     true  = 1
 };
 
+// Dimention units
+enum {
+    inches = 0,
+    cm     = 1,
+    mm     = 2
+};
+
+// Silkscreen
+enum {
+    no     = 0,
+    top    = 1,
+    bottom = 2,
+    both   = 3
+};
+
 
 // Global variables
 char skipDrcExport;
 string druFilePath;
 string paramWarnings;
+
+// Params for API
+real pcbShopperWidth; // Board width
+real pcbShopperHeight; // Board height
+char pcbShopperUnits; // Dim measurement units
+int pcbShopperLayers; // Board layers
+// Solder mask color, unimplemented, no good way to get data from eagle
+char pcbShopperSilkscreen; // Silkscreen number
+// Copper finish type, unimplemented
+int pcbShopperCu; // Outer layer copper thickness
+real pcbShopperTrace; // Min trace thickness
+char pcbShopperTwUnits; // Trace thickness units
+real pcbShopperDrill; // Min drill size
+char pcbShopperDrillUnits; // Drill size units
+int pcbShopperFingers; // Number of hard gold finish parts
+// Stencil, unimplemented
+// Quality, unimplemented
+// Designs, unimplemented, assumed 1
+// Country, unimplemented, assumed US
+// Days, unimplemented, assumed default
 
 
 // Functions
@@ -37,7 +72,42 @@ string paramWarnings;
  * TODO
  */
 void calculateParams(void) {
-
+    char tStop = false;
+    char bStop = false;
+    char tSilk = false;
+    char bSilk = false;
+    char tFinish = false;
+    char bFinish = false;
+    
+    // Check layer usage
+    board(B) { // Create board context for layer usage check
+        B.layers(L) { // Loop following through each layer
+            // Count each copper layer used
+            if (L.number <= 16) {
+                pcbShopperLayers++;
+            // Catch stop layers, top/bottom
+            } else if (L.number == LAYER_TSTOP) {
+                tStop = TRUE;
+            } else if (L.number == LAYER_BSTOP) {
+                bStop = TRUE;
+            // Catch silk layers, tPlace/_tSilk
+            } else if ((L.number == LAYER_TPLACE) || (L.number == 121)) {
+                tSilk = TRUE;
+        }
+    }
+    
+    // Measure board dims from outline
+    // Or from outer layers
+    
+    // Find minimum trace width
+    
+    // Pull params out of DRU
+    
+    // Check hole sizes
+    
+    // Check for unrouted nets
+    
+    // Count SMD pads
 }
 
 
@@ -57,7 +127,7 @@ void drawDialog(void) {
 // Parse arguments & search for state indicator
 skipDrcExport = false;
 for (int i = 1; i <= argc; i++) {
-    if (argv[i] == "-skipdrcexport") {
+    if (argv[i] == "-skipDrcExport") {
         skipDrcExport = true;
     } else {}
 }
@@ -71,7 +141,7 @@ if (board) {
             druFilePath = filedir(argv[0]) + "pcbshpr-" + filename(filesetext(B.name, ".dru"));
 
             // Save drc file, re-run script with new directive
-            exit("DRC SAVE '" + druFilePath + "';\nRUN '" + argv[0] + "' -skipdrcexport;");
+            exit("DRC SAVE '" + druFilePath + "';\nRUN '" + argv[0] + "' -skipDrcExport;");
         }
     } else {
     // If dru already exported in previous run
