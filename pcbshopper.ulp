@@ -17,7 +17,7 @@
 string Version = "1";
 
 
-// Typedefs
+// Defines
 enum {
     false = 0,
     true  = 1
@@ -36,6 +36,12 @@ enum {
     top    = 1,
     bottom = 2,
     both   = 3
+};
+
+// User generated layers
+enum {
+    LAYER_TSILK = 121,
+    LAYER_BSILK = 122
 };
 
 
@@ -68,12 +74,18 @@ int pcbShopperFingers; // Number of hard gold finish parts
 // Functions
 
 /**
+ * Wrap string in list tags
+ * TODO
+ */
+string listWrap(string item) {
+
+}
+
+/**
  * Calculate PCB parameters required for quote
  * TODO
  */
 void calculateParams(void) {
-    char tStop = false;
-    char bStop = false;
     char tSilk = false;
     char bSilk = false;
     char tFinish = false;
@@ -81,21 +93,38 @@ void calculateParams(void) {
     
     // Check layer usage
     board(B) { // Create board context for layer usage check
-        B.layers(L) { // Loop following through each layer
+        B.layers(L) { // Loop context for each layer
             // Count each copper layer used
             if (L.number <= 16) {
                 pcbShopperLayers++;
-            // Catch stop layers, top/bottom
-            } else if (L.number == LAYER_TSTOP) {
-                tStop = TRUE;
-            } else if (L.number == LAYER_BSTOP) {
-                bStop = TRUE;
-            // Catch silk layers, tPlace/_tSilk
-            } else if ((L.number == LAYER_TPLACE) || (L.number == 121)) {
-                tSilk = TRUE;
+            // Catch silk layers
+            } else if ((L.number == LAYER_TPLACE) || (L.number == LAYER_TSILK)) {
+                tSilk = true;
+            } else if ((L.number == LAYER_BPLACE) || (L.number == LAYER_BSILK)) {
+                bSilk = true;
+            // Catch gold finish
+            } else if (L.number == LAYER_TFINISH) {
+                tFinish = true;
+            } else if (L.number == LAYER_BFINISH) {
+                bFinish = true;
+            } else {}
         }
     }
     
+    if ((tSilk == true) && (bSilk == true)) {
+        pcbShopperSilkscreen = both;
+    } else if (tSilk == true) {
+        pcbShopperSilkscreen = top;
+    } else if (bSilk == true) {
+        pcbShopperSilkscreen = bottom;
+    } else {
+        pcbShopperSilkscreen = no;
+    }
+
+    if (pcbShopperLayers == 0) {
+        paramWarnings += listWrap("No traces found on copper layers.");
+    } else {}
+
     // Measure board dims from outline
     // Or from outer layers
     
@@ -108,6 +137,8 @@ void calculateParams(void) {
     // Check for unrouted nets
     
     // Count SMD pads
+
+    // Count hard gold finish pads
 }
 
 
