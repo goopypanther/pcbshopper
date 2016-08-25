@@ -57,15 +57,15 @@ char pcbShopperUnits; // Dim measurement units
 int pcbShopperLayers; // Board layers
 // Solder mask color, unimplemented, no good way to get data from eagle
 char pcbShopperSilkscreen; // Silkscreen number
-// Copper finish type, unimplemented
-int pcbShopperCu; // Outer layer copper thickness
+// Copper finish type, unimplemented, assumed cheapest
+// Copper weight, unimplemented, parsing dru files too annoying
 real pcbShopperTrace; // Min trace thickness
 char pcbShopperTwUnits; // Trace thickness units
 real pcbShopperDrill; // Min drill size
 char pcbShopperDrillUnits; // Drill size units
 int pcbShopperFingers; // Number of hard gold finish parts
-// Stencil, unimplemented
-// Quality, unimplemented
+// Stencil, unimplemented, assumed no
+// Quality, unimplemented, assumed not required
 // Designs, unimplemented, assumed 1
 // Country, unimplemented, assumed US
 // Days, unimplemented, assumed default
@@ -75,11 +75,14 @@ int pcbShopperFingers; // Number of hard gold finish parts
 
 /**
  * Wrap string in list tags
- * TODO
+ * 
+ * @param item String to wrap
+ * @return Wrapped string
  */
 string listWrap(string item) {
-
+    return ("<li>" + item + "</li>");
 }
+
 
 /**
  * Calculate PCB parameters required for quote
@@ -129,16 +132,133 @@ void calculateParams(void) {
     // Or from outer layers
     
     // Find minimum trace width
+    int smallestTrace = INT_MAX; // Will lose to any other real trace
+    
+    board(B) { // Board context
+        B.signals(S) { // Loop through all signals
+            S.wires(W) { // Loop through each wire
+                if (W.layer <= 16) { // Check if on copper layers
+                    smallestTrace = min(smallestTrace, W.width); // Find thinest trace
+                } else {}
+            }
+            
+            /* Check S.polygons for width? Thinking no, poly width not correlated to
+             * actual width, ie. zero width polygons
+             */ 
+        }
+
+        B.wires(W) { // Loop through all wires
+            if (W.layer <= 16) { // Check if on copper layers
+                smallestTrace = min(smallestTrace, W.width); // Find thinest trace
+            } else {}
+        }
+    }
+    
+    pcbShopperTrace = u2mm(smallestTrace); // Convert internal units to mm
+    pcbShopperTwUnits = mm;
     
     // Pull params out of DRU
     
     // Check hole sizes
+    int smallestHole = INT_MAX; // Will lose to any other real hole
+    
+    board(B) { // Board context
+        B.holes(H) { // Loop through board holes
+            smallestHole = min(smallestHole, H.drill); // Find smallest drill
+        }
+        
+        B.signals(S) {
+            S.vias(V) {
+                smallestHole = min(smallestHole, V.drill); // Find any via smaller than hole
+            }
+        }
+        
+        B.elements(E) { // Loop through each object on PCB
+            E.package.contacts(C) { // Loop through each contact of each package
+                if (C.pad) {
+                    smallestHole = min(smallestHole, C.pad.drill); // Find contacts smaller than hole
+                } else {}
+            }
+            
+            E.package.holes(H) { // Loop through holes in each package
+                smallestHole = min(smallestHole, H.drill); // Find holes smaller than others
+            }
+        }
+    }
+    
+    pcbShopperDrill = u2mm(smallestHole); // Convert internal units to mm
+    pcbShopperDrillUnits = mm;
     
     // Check for unrouted nets
+    char ratsnestExist = false;
     
-    // Count SMD pads
-
-    // Count hard gold finish pads
+    board(B) { // Board context
+        B.wires(W) { // Loop & check for unrouted wires
+            if (W.layer == LAYER_UNROUTED) {
+                ratsnestExist = true;
+            } else {}
+        }
+        
+        B.signals(S) {
+            S.wires(W) { // Loop & check for unrouted signal wires
+                if (W.layer == LAYER_UNROUTED) {
+                    ratsnestExist = true;
+                } else {}
+            }
+            
+            S.polygons(P) { // Loop & check for unrouted polygons
+                if (P.layer == LAYER_UNROUTED) {
+                    ratsnestExist = true;
+                } else {}
+            }
+        }
+    }
+    
+    if (ratsnestExist == true) {
+        paramWarnings += listWrap("There are unrouted nets on the PCB.");
+    } else {}
+    
+    // Count hard gold finish pads (just the polygons and rectangles)
+    char finishLayersUsed = false;
+    pcbShopperFingers = 0;
+    
+    board(B) { // Board context
+        // Check if either finish layer used
+        B.layers(L) { // Loop through each layer
+            if ((L.number == LAYER_TFINISH) || (L.number == LAYER_BFINISH)) {
+                finishLayersUsed = true;
+            } else {}
+        }
+        
+        // Only run further counts if finish layers were used
+        if (finishLayersUsed) {
+            B.elements(E) { // Loop through each object
+                E.package.polygons(P) { // Loop through each polygon of each package
+                    if ((P.layer == LAYER_TFINISH) || (P.layer == LAYER_BFINISH)) {
+                        pcbShopperFingers++;
+                    } else {}
+                }
+                
+                E.package.rectangles(R) { // Loop through each rectangle of each package
+                    if ((R.layer == LAYER_TFINISH) || (R.layer == LAYER_BFINISH)) {
+                        pcbShopperFingers++;
+                    } else {}
+                }
+            }
+            
+            B.polygons(P) { // Loop through each polygon
+                if ((P.layer == LAYER_TFINISH) || (P.layer == LAYER_BFINISH)) {
+                    pcbShopperFingers++;
+                } else {}
+            }
+            
+            B.rectangles(R) { // Loop through each rectangle
+                if ((R.layer == LAYER_TFINISH) || (R.layer == LAYER_BFINISH)) {
+                    pcbShopperFingers++;
+                } else {}
+            }
+        } else {}
+    }
 }
 
 
