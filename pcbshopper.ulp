@@ -96,17 +96,17 @@ void calculateParams(void) {
     board(B) { // Create board context for layer usage check
         B.layers(L) { // Loop context for each layer
             // Count each copper layer used
-            if (L.number <= 16) {
+            if ((L.number <= 16) && (L.used == true)) {
                 pcbShopperLayers++;
             // Catch silk layers
-            } else if ((L.number == LAYER_TPLACE) || (L.number == LAYER_TSILK)) {
+            } else if (((L.number == LAYER_TPLACE) || (L.number == LAYER_TSILK)) && (L.used == true)) {
                 tSilk = true;
-            } else if ((L.number == LAYER_BPLACE) || (L.number == LAYER_BSILK)) {
+            } else if (((L.number == LAYER_BPLACE) || (L.number == LAYER_BSILK)) && (L.used == true)) {
                 bSilk = true;
             // Catch gold finish
-            } else if (L.number == LAYER_TFINISH) {
+            } else if ((L.number == LAYER_TFINISH) && (L.used == true)) {
                 tFinish = true;
-            } else if (L.number == LAYER_BFINISH) {
+            } else if ((L.number == LAYER_BFINISH) && (L.used == true)) {
                 bFinish = true;
             } else {}
         }
@@ -127,6 +127,26 @@ void calculateParams(void) {
     } else {}
 
     // Measure board dims from outline
+    int xMin, xMax, yMin, yMax;
+    int startX, startY;
+    char dimClosed = false;
+    
+    board(B) { // Create board context
+        B.layers(L) { // Loop for each layer
+            // If dimension layer is unused, generate warning
+            if ((L.number == LAYER_DIMENSION) && (L.used == false)) {
+                paramWarnings += listWrap("No dimension layer found, board must have dimension for quote.")
+            } else {}
+        }
+        
+        B.wires(W) { // Loop through wires
+            // If wire is on dimension layer
+            if (L.number == LAYER_DIMENSION) {
+                // TODO: figure out how to calculate board size
+            } else {}
+        }
+    }
+    
     // Or from outer layers
     
     // Find minimum trace width
