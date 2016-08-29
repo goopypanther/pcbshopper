@@ -128,27 +128,63 @@ void calculateParams(void) {
 
     // Measure board dims from outline
     int xMin, xMax, yMin, yMax;
-    int startX, startY;
-    char dimClosed = false;
+    char initialWire = true;
+
     
     board(B) { // Create board context
         B.layers(L) { // Loop for each layer
             // If dimension layer is unused, generate warning
             if ((L.number == LAYER_DIMENSION) && (L.used == false)) {
-                paramWarnings += listWrap("No dimension layer found, board must have dimension for quote.")
+                paramWarnings += listWrap("No dimension layer found, board must have dimension for quote.");
             } else {}
         }
         
         B.wires(W) { // Loop through wires
             // If wire is on dimension layer
-            if (L.number == LAYER_DIMENSION) {
-                // TODO: figure out how to calculate board size
+            if (W.layer == LAYER_DIMENSION) {
+                if (initialWire == true) { // Catch initial wire so min/max is init'd *somewhere* on board edge
+                    initialWire = false;
+
+                    xMin = W.x1;
+                    yMin = W.y1;
+
+                    xMax = W.x1;
+                    yMax = W.y1;
+                } else {}
+
+                xMin = min(xMin, W.x1);
+                xMin = min(xMin, W.x2);
+
+                xMax = max(xMax, W.x1);
+                xMax = max(xMax, W.x2);
+
+                yMin = min(yMin, W.y1);
+                yMin = min(yMin, W.y2);
+
+                yMax = max(yMax, W.y1);
+                yMax = max(yMax, W.y2);
+
+                // If wire is an arc additional checks must be performed to find actual min/max
+                if (W.arc) { // If wire is arc
+                    // Eliminate corner 90 degree arcs where actual size == start/end
+                    if (!(((W.arc.angle1 ==   0) && (W.arc.angle2 ==  90)) ||
+                          ((W.arc.angle1 == 270) && (W.arc.angle2 == 360)) ||
+                          ((W.arc.angle1 == 180) && (W.arc.angle2 == 270)) ||
+                          ((W.arc.angle1 ==  90) && (W.arc.angle2 == 180)))) {
+                        // TODO: figure out how to calculate actual min/max of arcs
+                    } else {}
+                } else {}
             } else {}
+
+            // TODO: Loop through circles on dimension layer
         }
     }
     
-    // Or from outer layers
-    
+    // Find board dims from min/max points & convert internal units to mm
+    pcbShopperWidth = u2mm(xMax - xMin);
+    pcbShopperHeight = u2mm(yMax - yMin);
+    pcbShopperUnits = mm;
+
     // Find minimum trace width
     int smallestTrace = INT_MAX; // Will lose to any other real trace
     
@@ -283,7 +319,15 @@ void calculateParams(void) {
  * TODO
  */
 void drawDialog(void) {
+    string paramString;
 
+    sprintf(paramString, "Width: %f, Height: %f, Layers: %d\nMin trace: %f, Min drill: %f, # fingers: %d",
+                         pcbShopperWidth, pcbShopperHeight, pcbShopperLayers,
+                         pcbShopperTrace, pcbShopperDrill, pcbShopperFingers);
+
+    paramString += "\n" + paramWarnings;
+
+    dlgMessageBox(paramString);
 }
 
 
