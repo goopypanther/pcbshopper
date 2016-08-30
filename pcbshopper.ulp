@@ -84,7 +84,18 @@ string listWrap(string item) {
 
 /**
  * Calculate PCB parameters required for quote
- * TODO
+ *
+ * Currently calculates (in order):
+ *  1. Copper layer count
+ *  2. Silkscreen layer usage
+ *  3. Outer board dimensions using board outline layer
+ *      (taking into account wire width)
+ *  4. Minimum trace width
+ *  5. Smallest drill size
+ *  6. Unrouted nets
+ *  7. Hard gold finish objects
+ *
+ * Everything is stored into pcbShopper global variables, mm where applicable
  */
 void calculateParams(void) {
     char tSilk = false;
@@ -103,11 +114,6 @@ void calculateParams(void) {
                 tSilk = true;
             } else if (((L.number == LAYER_BPLACE) || (L.number == LAYER_BSILK)) && (L.used == true)) {
                 bSilk = true;
-            // Catch gold finish
-            } else if ((L.number == LAYER_TFINISH) && (L.used == true)) {
-                tFinish = true;
-            } else if ((L.number == LAYER_BFINISH) && (L.used == true)) {
-                bFinish = true;
             } else {}
         }
     }
@@ -128,7 +134,7 @@ void calculateParams(void) {
 
     // Measure board dims from outline
     int xMin, xMax, yMin, yMax;
-    char initialWire = true;
+    char initialObj = true;
 
     
     board(B) { // Create board context
@@ -142,8 +148,8 @@ void calculateParams(void) {
         B.wires(W) { // Loop through wires
             // If wire is on dimension layer
             if (W.layer == LAYER_DIMENSION) {
-                if (initialWire == true) { // Catch initial wire so min/max is init'd *somewhere* on board edge
-                    initialWire = false;
+                if (initialObj == true) { // Catch initial wire so min/max is init'd *somewhere* on board edge
+                    initialObj = false;
 
                     xMin = W.x1;
                     yMin = W.y1;
@@ -152,31 +158,49 @@ void calculateParams(void) {
                     yMax = W.y1;
                 } else {}
 
-                xMin = min(xMin, W.x1);
-                xMin = min(xMin, W.x2);
+                xMin = min(xMin, (W.x1 - (W.width / 2)));
+                xMin = min(xMin, (W.x2 - (W.width / 2)));
 
-                xMax = max(xMax, W.x1);
-                xMax = max(xMax, W.x2);
+                xMax = max(xMax, (W.x1 + (W.width / 2)));
+                xMax = max(xMax, (W.x2 + (W.width / 2)));
 
-                yMin = min(yMin, W.y1);
-                yMin = min(yMin, W.y2);
+                yMin = min(yMin, (W.y1 - (W.width / 2)));
+                yMin = min(yMin, (W.y2 - (W.width / 2)));
 
-                yMax = max(yMax, W.y1);
-                yMax = max(yMax, W.y2);
+                yMax = max(yMax, (W.y1 + (W.width / 2)));
+                yMax = max(yMax, (W.y2 + (W.width / 2)));
 
                 // If wire is an arc additional checks must be performed to find actual min/max
-                if (W.arc) { // If wire is arc
-                    // Eliminate corner 90 degree arcs where actual size == start/end
-                    if (!(((W.arc.angle1 ==   0) && (W.arc.angle2 ==  90)) ||
-                          ((W.arc.angle1 == 270) && (W.arc.angle2 == 360)) ||
-                          ((W.arc.angle1 == 180) && (W.arc.angle2 == 270)) ||
-                          ((W.arc.angle1 ==  90) && (W.arc.angle2 == 180)))) {
-                        // TODO: figure out how to calculate actual min/max of arcs
-                    } else {}
+                if (W.arc) { // If wire is arc, calculate bounding box of arc
+                    xMin = min(xMin, (W.arc.xc - W.arc.radius - (W.arc.width / 2)));
+                    yMin = min(yMin, (W.arc.yc - W.arc.radius - (W.arc.width / 2)));
+
+                    xMax = max(xMax, (W.arc.xc + W.arc.radius + (W.arc.width / 2)));
+                    yMax = max(yMax, (W.arc.yc + W.arc.radius + (W.arc.width / 2)));
                 } else {}
             } else {}
+        }
+        
+        // In the event the board outline is made of a single circle...
+        B.circles(C) { // Loop through circles
+            if (C.layer == LAYER_DIMENSION) {
+                if (initialObj == true) { // Catch initial object so min/max starts at center of board
+                    initialObj = false;
 
-            // TODO: Loop through circles on dimension layer
+                    xMin = C.x;
+                    yMin = C.y;
+
+                    xMax = C.x;
+                    yMax = C.y;
+                } else {}
+                
+                // Check against min/max so internal circular cutouts don't overwrite actual board edge 
+                xMin = min(xMin, (C.x - C.radius - (C.width / 2)));
+                yMin = min(yMin, (C.y - C.radius - (C.width / 2)));
+
+                xMax = max(xMax, (C.x + C.radius + (C.width / 2)));
+                yMax = max(yMax, (C.y + C.radius + (C.width / 2)));
+            }
         }
     }
     
@@ -306,6 +330,12 @@ void calculateParams(void) {
             
             B.rectangles(R) { // Loop through each rectangle
                 if ((R.layer == LAYER_TFINISH) || (R.layer == LAYER_BFINISH)) {
+                    pcbShopperFingers++;
+                } else {}
+            }
+            
+            B.circles(C) { // Loop through each circle
+                if ((C.layer == LAYER_TFINISH) || (C.layer == LAYER_BFINISH)) {
                     pcbShopperFingers++;
                 } else {}
             }
