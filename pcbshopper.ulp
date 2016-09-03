@@ -355,9 +355,21 @@ void drawDialog(void) {
                          pcbShopperWidth, pcbShopperHeight, pcbShopperLayers,
                          pcbShopperTrace, pcbShopperDrill, pcbShopperFingers);
 
-    paramString += "\n" + paramWarnings;
+    dlgDialog("PCBShopper Quote Generator") {
+        //dlgHBoxLayout {
+        //    dlgSpacing(47);
+        //}
 
-    dlgMessageBox(paramString);
+        dlgGroup("Notice") {
+            dlgLabel("This script will create a quote for your PCB on PCBShopper.com. Some details related to your board ");
+        }
+
+        dlgHBoxLayout {
+            dlgGroup("Warnings:") {
+                dlgLabel(paramWarnings);
+            }
+        }
+    };
 }
 
 
