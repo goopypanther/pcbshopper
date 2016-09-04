@@ -6,14 +6,13 @@
  * @license (C) Jeremy Ruhland 2016 under GPL3
  *
  */
- 
+
 #usage "<b>PCBshopper Quote Helper</b>"
        "<p>"
        "Automatically submit quotes to PCBshopper.com"
        "<p>"
+       "Get more information at <a href=\"http://github.com/JeremyRuhland/pcbshopper\">http://github.com/JeremyRuhland/pcbshopper</a>"
        "<author>Author: Jeremy Ruhland</author>"
-       
-#require 5.1000
 
 
 // Defines
@@ -67,7 +66,7 @@ enum {
     either   = 3,
     qualBoth = 4
 };
-// 
+//
 
 // User generated layers
 enum {
@@ -169,6 +168,12 @@ string leadTimeArray[] = {
     "28", "29", "30"
 };
 
+string quantityArray[] = {
+    "1", "2", "3", "4", "5",
+    "6", "7", "8", "9", "10",
+    "Select qty on PCBShopper.com"
+};
+
 // Params for API
 real pcbShopperWidth; // Board width
 real pcbShopperHeight; // Board height
@@ -186,7 +191,7 @@ int pcbShopperFingers; // Number of hard gold finish parts
 int pcbShopperStencil; // Stencil, unimplemented, assumed no
 int pcbShopperQuality; // Quality, unimplemented, assumed not required
 int pcbShopperDesigns; // Designs, unimplemented, assumed 1
-int pcbShopperQuantity; // Quantity, unimplemented, assumed 1
+int pcbShopperQuantity; // Quantity, unimplemented, 0 indxed for qty 1, assumed 3
 string pcbShopperCountry; // Country, unimplemented, assumed US
 int pcbShopperDays; // Days, unimplemented, assumed default
 
@@ -195,37 +200,37 @@ int pcbShopperDays; // Days, unimplemented, assumed default
 
 /**
  * Turn int into string
- * 
+ *
  * @param num Int to string
  * @return String containing int
  */
 string int2String(int num) {
     string retString;
-    
+
     sprintf(retString, "%d", num);
-    
+
     return (retString);
 }
 
 
 /**
  * Turn float into string
- * 
+ *
  * @param num Float to string
  * @return String containing float
  */
 string float2String(real num) {
     string retString;
-    
+
     sprintf(retString, "%f", num);
-    
+
     return (retString);
 }
 
 
 /**
  * Wrap string in list tags
- * 
+ *
  * @param item String to wrap
  * @return Wrapped string
  */
@@ -236,24 +241,24 @@ string listWrap(string item) {
 
 /**
  * Make string bold
- * 
+ *
  * @param str String to bold
  * @return Bold'd string
  */
 string string2Bold(string str) {
-    
+
     return ("<b>" + str + "</b>");
 }
 
 
 /**
  * Assemble URL string for pcbshopper.com quote
- * 
+ *
  * @return URL string
  */
 string assembleQuoteUrl(void) {
     string quoteString;
-    
+
     string stringUnits;
     string stringTWUnits;
     string stringDrillUnits;
@@ -279,7 +284,7 @@ string assembleQuoteUrl(void) {
         stringUnits = "err";
         break;
     }
-    
+
     // Create string for trace width units
     switch (pcbShopperTwUnits) {
     case inches:
@@ -295,7 +300,7 @@ string assembleQuoteUrl(void) {
         stringTWUnits = "err";
         break;
     }
-    
+
     // Create string for drill width units
     switch (pcbShopperDrillUnits) {
     case inches:
@@ -311,7 +316,7 @@ string assembleQuoteUrl(void) {
         stringDrillUnits = "err";
         break;
     }
-    
+
     // Create string for soldermask color
     switch (pcbShopperSolderMaskColor) {
     case none:
@@ -345,7 +350,7 @@ string assembleQuoteUrl(void) {
         stringSolderMaskColor = "err";
         break;
     }
-    
+
     // Create string for surface finish
     switch (pcbShopperCopperFinishType) {
     case cheapest:
@@ -392,11 +397,11 @@ string assembleQuoteUrl(void) {
 
     // Create string for days lead time
     if (pcbShopperDays > 0) {
-        stringDays = int2String(pcbShopperDays + 1);
+        stringDays = int2String(pcbShopperDays + 1); // Lead time options skip 1, so we count over it
     } else {
         stringDays = "default";
     }
-    
+
     sprintf(quoteString, "http://pcbshopper.com/?Width=%f&Height=%f&Units=%s&" +
             "Layers=%d&Color=%s&Silkscreen=%d&Finish=%s&Cu=%d&Trace=%f&" +
             "TWUnits=%s&Drill=%f&DrillUnits=%s&Fingers=%d&Stencil=%d&" +
@@ -406,10 +411,10 @@ string assembleQuoteUrl(void) {
             (pcbShopperCopperWeightOz + 1), pcbShopperTrace, stringTWUnits,
             pcbShopperDrill, stringDrillUnits, pcbShopperFingers,
             pcbShopperStencil, stringQuality, pcbShopperDesigns,
-            pcbShopperQuantity, pcbShopperCountry, stringDays);
+            (pcbShopperQuantity + 1), pcbShopperCountry, stringDays);
 
     quoteString = "<a href=\"" + quoteString + "\"> Click Here To Open PCBShopper.com</a>";
-    
+
     return (quoteString);
 }
 
@@ -436,7 +441,7 @@ void calculateParams(void) {
     char bSilk = false;
     char tFinish = false;
     char bFinish = false;
-    
+
     // Check layer usage
     board(B) { // Create board context for layer usage check
         B.layers(L) { // Loop context for each layer
@@ -451,7 +456,7 @@ void calculateParams(void) {
             } else {}
         }
     }
-    
+
     if ((tSilk == true) && (bSilk == true)) {
         pcbShopperSilkscreen = both;
     } else if (tSilk == true) {
@@ -470,7 +475,7 @@ void calculateParams(void) {
     int xMin, xMax, yMin, yMax;
     char initialObj = true;
 
-    
+
     board(B) { // Create board context
         B.layers(L) { // Loop for each layer
             // If dimension layer is unused, generate warning
@@ -478,7 +483,7 @@ void calculateParams(void) {
                 paramWarnings += listWrap("No dimension layer found, board must have dimension for quote.");
             } else {}
         }
-        
+
         B.wires(W) { // Loop through wires
             // If wire is on dimension layer
             if (W.layer == LAYER_DIMENSION) {
@@ -514,7 +519,7 @@ void calculateParams(void) {
                 } else {}
             } else {}
         }
-        
+
         // In the event the board outline is made of a single circle...
         B.circles(C) { // Loop through circles
             if (C.layer == LAYER_DIMENSION) {
@@ -527,8 +532,8 @@ void calculateParams(void) {
                     xMax = C.x;
                     yMax = C.y;
                 } else {}
-                
-                // Check against min/max so internal circular cutouts don't overwrite actual board edge 
+
+                // Check against min/max so internal circular cutouts don't overwrite actual board edge
                 xMin = min(xMin, (C.x - C.radius - (C.width / 2)));
                 yMin = min(yMin, (C.y - C.radius - (C.width / 2)));
 
@@ -537,7 +542,7 @@ void calculateParams(void) {
             }
         }
     }
-    
+
     // Find board dims from min/max points & convert internal units to mm
     pcbShopperWidth = u2mm(xMax - xMin);
     pcbShopperHeight = u2mm(yMax - yMin);
@@ -545,7 +550,7 @@ void calculateParams(void) {
 
     // Find minimum trace width
     int smallestTrace = INT_MAX; // Will lose to any other real trace
-    
+
     board(B) { // Board context
         B.signals(S) { // Loop through all signals
             S.wires(W) { // Loop through each wire
@@ -553,10 +558,10 @@ void calculateParams(void) {
                     smallestTrace = min(smallestTrace, W.width); // Find thinest trace
                 } else {}
             }
-            
+
             /* Check S.polygons for width? Thinking no, poly width not correlated to
              * actual width, ie. zero width polygons
-             */ 
+             */
         }
 
         B.wires(W) { // Loop through all wires
@@ -565,57 +570,57 @@ void calculateParams(void) {
             } else {}
         }
     }
-    
+
     pcbShopperTrace = u2mm(smallestTrace); // Convert internal units to mm
     pcbShopperTwUnits = mm;
-    
+
     // Check hole sizes
     int smallestHole = INT_MAX; // Will lose to any other real hole
-    
+
     board(B) { // Board context
         B.holes(H) { // Loop through board holes
             smallestHole = min(smallestHole, H.drill); // Find smallest drill
         }
-        
+
         B.signals(S) {
             S.vias(V) {
                 smallestHole = min(smallestHole, V.drill); // Find any via smaller than hole
             }
         }
-        
+
         B.elements(E) { // Loop through each object on PCB
             E.package.contacts(C) { // Loop through each contact of each package
                 if (C.pad) {
                     smallestHole = min(smallestHole, C.pad.drill); // Find contacts smaller than hole
                 } else {}
             }
-            
+
             E.package.holes(H) { // Loop through holes in each package
                 smallestHole = min(smallestHole, H.drill); // Find holes smaller than others
             }
         }
     }
-    
+
     pcbShopperDrill = u2mm(smallestHole); // Convert internal units to mm
     pcbShopperDrillUnits = mm;
-    
+
     // Check for unrouted nets
     char ratsnestExist = false;
-    
+
     board(B) { // Board context
         B.wires(W) { // Loop & check for unrouted wires
             if (W.layer == LAYER_UNROUTED) {
                 ratsnestExist = true;
             } else {}
         }
-        
+
         B.signals(S) {
             S.wires(W) { // Loop & check for unrouted signal wires
                 if (W.layer == LAYER_UNROUTED) {
                     ratsnestExist = true;
                 } else {}
             }
-            
+
             S.polygons(P) { // Loop & check for unrouted polygons
                 if (P.layer == LAYER_UNROUTED) {
                     ratsnestExist = true;
@@ -623,15 +628,15 @@ void calculateParams(void) {
             }
         }
     }
-    
+
     if (ratsnestExist == true) {
         paramWarnings += listWrap("There are unrouted nets on the PCB.");
     } else {}
-    
+
     // Count hard gold finish pads (just the polygons and rectangles)
     char finishLayersUsed = false;
     pcbShopperFingers = 0;
-    
+
     board(B) { // Board context
         // Check if either finish layer used
         B.layers(L) { // Loop through each layer
@@ -639,7 +644,7 @@ void calculateParams(void) {
                 finishLayersUsed = true;
             } else {}
         }
-        
+
         // Only run further counts if finish layers were used
         if (finishLayersUsed) {
             B.elements(E) { // Loop through each object
@@ -648,26 +653,26 @@ void calculateParams(void) {
                         pcbShopperFingers++;
                     } else {}
                 }
-                
+
                 E.package.rectangles(R) { // Loop through each rectangle of each package
                     if ((R.layer == LAYER_TFINISH) || (R.layer == LAYER_BFINISH)) {
                         pcbShopperFingers++;
                     } else {}
                 }
             }
-            
+
             B.polygons(P) { // Loop through each polygon
                 if ((P.layer == LAYER_TFINISH) || (P.layer == LAYER_BFINISH)) {
                     pcbShopperFingers++;
                 } else {}
             }
-            
+
             B.rectangles(R) { // Loop through each rectangle
                 if ((R.layer == LAYER_TFINISH) || (R.layer == LAYER_BFINISH)) {
                     pcbShopperFingers++;
                 } else {}
             }
-            
+
             B.circles(C) { // Loop through each circle
                 if ((C.layer == LAYER_TFINISH) || (C.layer == LAYER_BFINISH)) {
                     pcbShopperFingers++;
@@ -675,14 +680,14 @@ void calculateParams(void) {
             }
         } else {}
     }
-    
+
     pcbShopperSolderMaskColor = least;
     pcbShopperCopperFinishType = cheapest;
     pcbShopperCopperWeightOz = 0; // 1oz
     pcbShopperStencil = no;
     pcbShopperQuality = na; // No quality check
     pcbShopperDesigns = 1;
-    pcbShopperQuantity = 3; // So OSHpark is alway an option
+    pcbShopperQuantity = 2; // So OSHpark is alway an option
     pcbShopperCountry = "US"; // Assumed US
     pcbShopperDays    = 0; // Default
 }
@@ -693,7 +698,7 @@ void calculateParams(void) {
  */
 void drawDialog(void) {
     string quoteUrl;
-    
+
     int solderMaskArrayIndex;
     int finishTypeArrayIndex;
     int copperWeightArrayIndex;
@@ -701,14 +706,14 @@ void drawDialog(void) {
     int qualityOptionArrayIndex;
     int countryArrayIndex = 230; // Default to US
     int leadTimeArrayIndex;
-    
+
     dlgDialog("PCBShopper Quote Generator V" + Version) {
         quoteUrl = assembleQuoteUrl();
-        
+
         dlgHBoxLayout {
             dlgSpacing(600);
         }
-        
+
         dlgGroup("Notice") {
             dlgLabel("This script will create a quote for your PCB on PCBShopper.com. Some details related to your<br>" +
                      "board cannot be pulled automatically from your design and can be manually selected from the drop-downs below " +
@@ -721,48 +726,48 @@ void drawDialog(void) {
                 dlgLabel(paramWarnings);
             }
         } else {}
-        
+
         dlgGroup("Params:") {
             dlgGridLayout {
                 dlgCell(0, 0) {
                     dlgLabel(string2Bold("Width:"));
                 }
-                
+
                 dlgCell(0, 1) {
                     dlgLabel(float2String(pcbShopperWidth) + " mm");
                 }
-                
+
                 dlgCell(1, 0) {
                     dlgLabel(string2Bold("Height:"));
                 }
-                
+
                 dlgCell(1, 1) {
                     dlgLabel(float2String(pcbShopperHeight) + " mm");
                 }
-                
+
                 dlgCell(2, 0) {
                     dlgLabel(string2Bold("Layer Count:"));
                 }
-                
+
                 dlgCell(2, 1) {
                     dlgLabel(int2String(pcbShopperLayers));
                 }
-                
+
                 dlgCell(3, 0) {
                     dlgLabel(string2Bold("Solder Mask Color:"));
                 }
-                
+
                 dlgCell(3, 1) {
                     dlgComboBox(solderMaskArray, pcbShopperSolderMaskColor) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
-                
+
                 dlgCell(4, 0) {
                     dlgLabel(string2Bold("Silkscreen:"));
                 }
-                
+
                 dlgCell(4, 1) {
                     switch (pcbShopperSilkscreen) {
                     case no:
@@ -782,117 +787,120 @@ void drawDialog(void) {
                         break;
                     }
                 }
-                
+
                 dlgCell(5, 0) {
                     dlgLabel(string2Bold("Finish Type:"));
                 }
-                
+
                 dlgCell(5, 1) {
                     dlgComboBox(finishTypeArray, pcbShopperCopperFinishType) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
-                
+
                 dlgCell(6, 0) {
                     dlgLabel(string2Bold("Copper Weight (Outer Layers):"));
                 }
-                
+
                 dlgCell(6, 1) {
                     dlgComboBox(copperWeightArray, pcbShopperCopperWeightOz) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
-                
+
                 dlgCell(7, 0) {
                     dlgLabel(string2Bold("Min Trace Width:"));
                 }
-                
+
                 dlgCell(7, 1) {
                     dlgLabel(float2String(pcbShopperTrace) + " mm");
                 }
-                
+
                 dlgCell(8, 0) {
                     dlgLabel(string2Bold("Min Drill:"));
                 }
-                
+
                 dlgCell(8, 1) {
                     dlgLabel(float2String(pcbShopperDrill) + " mm");
                 }
-                
+
                 dlgCell(9, 0) {
                     dlgLabel(string2Bold("Plated Gold Fingers:"));
                 }
-                
+
                 dlgCell(9, 1) {
                     dlgLabel(int2String(pcbShopperFingers));
                 }
-                
+
                 dlgCell(10, 0) {
                     dlgLabel(string2Bold("Stencil Option:"));
                 }
-                
+
                 dlgCell(10, 1) {
                     dlgComboBox(stencilOptionArray, pcbShopperStencil) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
-                
+
                 dlgCell(11, 0) {
                     dlgLabel(string2Bold("Quality Option:"));
                 }
-                
+
                 dlgCell(11, 1) {
                     dlgComboBox(qualityOptionArray, pcbShopperQuality) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
-                
+
                 dlgCell(12, 0) {
                     dlgLabel(string2Bold("Quantity:"));
                 }
-                
+
                 dlgCell(12, 1) {
-                    // TODO: quantity roller box
-                }
-                
-                dlgCell(13, 0) {
-                    dlgLabel(string2Bold("Country:"));
-                }
-                
-                dlgCell(13, 1) {
-                    dlgComboBox(countryArray, countryArrayIndex) {
-                        pcbShopperCountry = countryArray[countryArrayIndex]; // Select new country code from array
-                        
+                    dlgComboBox(quantityArray, pcbShopperQuantity) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
-                
+
+                dlgCell(13, 0) {
+                    dlgLabel(string2Bold("Country:"));
+                }
+
+                dlgCell(13, 1) {
+                    dlgComboBox(countryArray, countryArrayIndex) {
+                        pcbShopperCountry = countryArray[countryArrayIndex]; // Select new country code from array
+
+                        quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
+                        dlgRedisplay(); // Update dialog
+                    }
+                }
+
                 dlgCell(14, 0) {
                     dlgLabel(string2Bold("Lead Time (Business Days):"));
                 }
-                
+
                 dlgCell(14, 1) {
                     dlgComboBox(leadTimeArray, leadTimeArrayIndex) {
                         pcbShopperDays = leadTimeArrayIndex;
-                        
+
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
             }
         }
-        
+
         dlgGroup("Quote:") {
             dlgHBoxLayout {
                 dlgLabel(quoteUrl, 1);
-                
+
                 dlgStretch(1);
-                
+
                 dlgPushButton("&Close") {
                     dlgAccept();
                 }
@@ -910,7 +918,7 @@ void drawDialog(void) {
 if (board) {
     status("Identifying PCB design constraints...");
     calculateParams(); // Check PCB for all relevant design constraints
-    
+
     // Check if any warnings were generated during param calcs
     if (paramWarnings) {
         // Generate warning string for display
