@@ -3,7 +3,7 @@
  * @brief Automatically parse PCB and submit for quote on PCBshopper.com
  *
  * @author Jeremy Ruhland <jeremy ( a t ) goopypanther.org>
- * @license (C) Jeremy Ruhland 2016 under GPL3
+ * @license (C) Jeremy Ruhland 2018 under GPL3
  *
  */
 
@@ -38,15 +38,28 @@ enum {
 
 // Mask
 enum {
-    none   = 0,
-    least  = 1,
-    black  = 2,
-    blue   = 3,
-    green  = 4,
-    purple = 5,
-    red    = 6,
-    white  = 7,
-    yellow = 8
+    none        = 0,
+    least       = 1,
+    black       = 2,
+    blackmatte  = 3,
+    blue        = 4,
+    green       = 5,
+    greenmatte  = 6,
+    purple      = 7,
+    red         = 8,
+    transparent = 9,
+    white       = 10,
+    yellow      = 11
+};
+
+// Board thickness
+enum {
+    t24mil = 0,
+    t31mil = 1,
+    t40mil = 2,
+    t47mil = 3,
+    t62mil = 4,
+    t79mil = 5
 };
 
 // Finish
@@ -84,12 +97,24 @@ string solderMaskArray[] = {
     "None",
     "Least expensive",
     "Black",
+    "Matte Black",
     "Blue",
     "Green",
+    "Matte Green",
     "Purple",
     "Red",
+    "Transparent",
     "White",
     "Yellow"
+};
+
+string boardThicknessArray[] = {
+    "0.6mm/24mil",
+    "0.8mm/31mil",
+    "1.0mm/40mil",
+    "1.2mm/47mil",
+    "1.6mm/62mil",
+    "2.0mm/79mil"
 };
 
 string finishTypeArray[] = {
@@ -180,6 +205,7 @@ real pcbShopperHeight; // Board height
 char pcbShopperUnits; // Dim measurement units
 int pcbShopperLayers; // Board layers
 int pcbShopperSolderMaskColor; // Solder mask color, unimplemented, no good way to get data from eagle
+int pcbShopperBoardThickness; // Board thickness
 int pcbShopperSilkscreen; // Silkscreen number
 int pcbShopperCopperFinishType; // Copper finish type, unimplemented, assumed cheapest
 int pcbShopperCopperWeightOz; // Copper weight, 0 indexed for 1oz, unimplemented, parsing dru files too annoying
@@ -264,6 +290,7 @@ string assembleQuoteUrl(void) {
     string stringDrillUnits;
     string stringSolderMaskColor;
     string stringFinish;
+    string stringBoardThickness;
     int intStencil;
     string stringQuality;
     string stringCountry;
@@ -328,17 +355,26 @@ string assembleQuoteUrl(void) {
     case black:
         stringSolderMaskColor = "black";
         break;
+    case blackmatte:
+        stringSolderMaskColor = "blackmatte";
+        break;
     case blue:
         stringSolderMaskColor = "blue";
         break;
     case green:
         stringSolderMaskColor = "green";
         break;
+    case greenmatte:
+        stringSolderMaskColor = "greenmatte";
+        break;
     case purple:
         stringSolderMaskColor = "purple";
         break;
     case red:
         stringSolderMaskColor = "red";
+        break;
+    case transparent:
+        stringSolderMaskColor = "transparent";
         break;
     case white:
         stringSolderMaskColor = "white";
@@ -373,6 +409,31 @@ string assembleQuoteUrl(void) {
         break;
     }
 
+    // Create string for board thickness
+    switch (pcbShopperBoardThickness) {
+    case t24mil:
+        stringBoardThickness = "0.6";
+        break;
+    case t31mil:
+        stringBoardThickness = "0.8";
+        break;
+    case t40mil:
+        stringBoardThickness = "1.0";
+        break;
+    case t47mil:
+        stringBoardThickness = "1.2";
+        break;
+    case t62mil:
+        stringBoardThickness = "1.6";
+        break;
+    case t79mil:
+        stringBoardThickness = "2.0";
+        break;
+    default:
+        stringBoardThickness = "err";
+        break;
+    }
+
     // Create string for quality
     switch (pcbShopperQuality) {
     case na:
@@ -403,15 +464,16 @@ string assembleQuoteUrl(void) {
     }
 
     sprintf(quoteString, "http://pcbshopper.com/?Width=%f&Height=%f&Units=%s&" +
-            "Layers=%d&Color=%s&Silkscreen=%d&Finish=%s&Cu=%d&Trace=%f&" +
-            "TWUnits=%s&Drill=%f&DrillUnits=%s&Fingers=%d&Stencil=%d&" +
-            "Quality=%s&Designs=%d&Quantity=%d&Country=%s&days=%s",
+            "Layers=%d&Color=%s&Silkscreen=%d&Finish=%s&Thickness=%s&Cu=%d&" +
+            "Trace=%f&TWUnits=%s&Drill=%f&DrillUnits=%s&Fingers=%d&" +
+            "Stencil=%d&Quality=%s&Designs=%d&Quantity=%d&Country=%s&days=%s",
             pcbShopperWidth, pcbShopperHeight, stringUnits, pcbShopperLayers,
             stringSolderMaskColor, pcbShopperSilkscreen, stringFinish,
-            (pcbShopperCopperWeightOz + 1), pcbShopperTrace, stringTWUnits,
-            pcbShopperDrill, stringDrillUnits, pcbShopperFingers,
-            pcbShopperStencil, stringQuality, pcbShopperDesigns,
-            (pcbShopperQuantity + 1), pcbShopperCountry, stringDays);
+            stringBoardThickness, (pcbShopperCopperWeightOz + 1),
+            pcbShopperTrace, stringTWUnits, pcbShopperDrill, stringDrillUnits,
+            pcbShopperFingers, pcbShopperStencil, stringQuality,
+            pcbShopperDesigns, (pcbShopperQuantity + 1),
+            pcbShopperCountry, stringDays);
 
     quoteString = "<a href=\"" + quoteString + "\"> Click Here To Open PCBShopper.com</a>";
 
@@ -705,6 +767,7 @@ void drawDialog(void) {
     int stencilOptionArrayIndex;
     int qualityOptionArrayIndex;
     int countryArrayIndex = 230; // Default to US
+    int boardThicknessArrayIndex = t62mil; // Default to 1.6mm/62mil
     int leadTimeArrayIndex;
 
     dlgDialog("PCBShopper Quote Generator V" + Version) {
@@ -800,78 +863,91 @@ void drawDialog(void) {
                 }
 
                 dlgCell(6, 0) {
-                    dlgLabel(string2Bold("Copper Weight (Outer Layers):"));
+                    dlgLabel(string2Bold("Board Thickness:"));
                 }
-
+ 
                 dlgCell(6, 1) {
-                    dlgComboBox(copperWeightArray, pcbShopperCopperWeightOz) {
+                    dlgComboBox(boardThicknessArray, boardThicknessArrayIndex) {
+                        pcbShopperBoardThickness = boardThicknessArrayIndex; // Select new board thickness from array
+
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
 
                 dlgCell(7, 0) {
-                    dlgLabel(string2Bold("Min Trace Width:"));
+                    dlgLabel(string2Bold("Copper Weight (Outer Layers):"));
                 }
 
                 dlgCell(7, 1) {
-                    dlgLabel(float2String(pcbShopperTrace) + " mm");
+                    dlgComboBox(copperWeightArray, pcbShopperCopperWeightOz) {
+                        quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
+                        dlgRedisplay(); // Update dialog
+                    }
                 }
 
                 dlgCell(8, 0) {
-                    dlgLabel(string2Bold("Min Drill:"));
+                    dlgLabel(string2Bold("Min Trace Width:"));
                 }
 
                 dlgCell(8, 1) {
-                    dlgLabel(float2String(pcbShopperDrill) + " mm");
+                    dlgLabel(float2String(pcbShopperTrace) + " mm");
                 }
 
                 dlgCell(9, 0) {
-                    dlgLabel(string2Bold("Plated Gold Fingers:"));
+                    dlgLabel(string2Bold("Min Drill:"));
                 }
 
                 dlgCell(9, 1) {
-                    dlgLabel(int2String(pcbShopperFingers));
+                    dlgLabel(float2String(pcbShopperDrill) + " mm");
                 }
 
                 dlgCell(10, 0) {
-                    dlgLabel(string2Bold("Stencil Option:"));
+                    dlgLabel(string2Bold("Plated Gold Fingers:"));
                 }
 
                 dlgCell(10, 1) {
+                    dlgLabel(int2String(pcbShopperFingers));
+                }
+
+                dlgCell(11, 0) {
+                    dlgLabel(string2Bold("Stencil Option:"));
+                }
+
+                dlgCell(11, 1) {
                     dlgComboBox(stencilOptionArray, pcbShopperStencil) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
 
-                dlgCell(11, 0) {
+                dlgCell(12, 0) {
                     dlgLabel(string2Bold("Quality Option:"));
                 }
 
-                dlgCell(11, 1) {
+                dlgCell(12, 1) {
                     dlgComboBox(qualityOptionArray, pcbShopperQuality) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
 
-                dlgCell(12, 0) {
+                dlgCell(13, 0) {
                     dlgLabel(string2Bold("Quantity:"));
                 }
 
-                dlgCell(12, 1) {
+                dlgCell(13, 1) {
                     dlgComboBox(quantityArray, pcbShopperQuantity) {
                         quoteUrl = assembleQuoteUrl(); // Update quote link using new selection
                         dlgRedisplay(); // Update dialog
                     }
                 }
 
-                dlgCell(13, 0) {
+                dlgCell(14, 0) {
                     dlgLabel(string2Bold("Country:"));
                 }
 
-                dlgCell(13, 1) {
+                dlgCell(14, 1) {
                     dlgComboBox(countryArray, countryArrayIndex) {
                         pcbShopperCountry = countryArray[countryArrayIndex]; // Select new country code from array
 
@@ -880,11 +956,11 @@ void drawDialog(void) {
                     }
                 }
 
-                dlgCell(14, 0) {
+                dlgCell(15, 0) {
                     dlgLabel(string2Bold("Lead Time (Business Days):"));
                 }
 
-                dlgCell(14, 1) {
+                dlgCell(15, 1) {
                     dlgComboBox(leadTimeArray, leadTimeArrayIndex) {
                         pcbShopperDays = leadTimeArrayIndex;
 
