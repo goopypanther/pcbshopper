@@ -14,3 +14,5 @@ Adding a shortcut button to the eagle layout editor toolbar
 ---
 
 Disclaimer: I am not officially associated with PCBShopper.com in any way. This script was made possible by collaboration with Bob Alexander, owner of PCBShopper. This script comes with no warranty, you are responsible for checking the accuracy of the quotes generated with your respective fab.
+
+Read a review at the [HACKADAY](http://hackaday.com/2016/09/11/this-eagle-script-gets-quotes-for-your-boards) website
