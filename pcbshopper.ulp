@@ -21,7 +21,7 @@ enum {
     true  = 1
 };
 
-// Dimention units
+// Dimension units
 enum {
     inches = 0,
     cm     = 1,
