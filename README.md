@@ -9,7 +9,41 @@ Parameters such as board size, layer usage, trace width and hole diameter are au
 
 Adding a shortcut button to the eagle layout editor toolbar
 -----------------------------------------------------------
-*TODO*
+
+1. Copy pcb-shopper.png to the "bin" folder under the EAGLE installation directory.
+On a MAC it is:
+
+         /Applications/EAGLE-9.0.0/bin
+
+2. Copy PCBShopper.ulp to the "ulp" folder under the EAGLE installation directory.
+On a MAC it is:
+
+        /Applications/EAGLE-9.0.0/ulp
+
+3. 
+Open "eagle.scr" file from the "scr" folder
+On a MAC it is:
+
+        /Applications/EAGLE-9.0.0/scr
+
+Add the following line within the "MENU" section of "BRD:":
+
+     '[bin/pcb-shopper.png] PCB Shopper : Run PCBShopper.ulp;'\
+
+So it reads something like this:
+
+
+    BRD:    
+        MENU 
+             '[bin/designlink.png] Search and order : Run designlink-order.ulp -general;'\
+             '[bin/pcb-service.png] PCB Service : Run pcb-service.ulp;'\
+             '[bin/snapeda.png] SnapEDA : Run snapeda.ulp;'\
+             '[bin/samacsys.png] SamacSys : Run samacsys.ulp;'\
+             '[bin/idf-3d.png] Export to IDF 3D format: Run eagleidfexporter.ulp;'\
+             '[bin/pcb-shopper.png] PCB Shopper : Run PCBShopper.ulp;'\
+        
+                ;
+
 
 ---
 
